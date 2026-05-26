@@ -45,10 +45,10 @@ if logo_path.exists():
         st.image(str(logo_path), width=100)
     with col2:
         st.title("RECAPO - NNNF")
-        st.markdown("Real-time collection analytics & payment forecast engine")
+        st.markdown("Real-time collection analytics")
 else:
     st.title("RECAPO Intelligence System")
-    st.markdown("Real-time collection analytics & payment forecast engine")
+    st.markdown("Real-time collection analytics")
 
 # ================= VISUAL THEME =================
 CHART_TEMPLATE = "plotly_white"
