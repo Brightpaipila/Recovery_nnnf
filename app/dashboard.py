@@ -870,28 +870,6 @@ with insight_col4:
     else:
         st.info("Days off, arrears, and risk fields are required for this view.")
 
-# Daily Money Rise Chart
-st.subheader("📈 Daily Money Rise")
-if "Charged until" in filtered_df.columns and "Monthly_Payment" in filtered_df.columns:
-    daily_sums = filtered_df.groupby(filtered_df["Charged until"].dt.date)["Monthly_Payment"].sum().reset_index()
-    daily_sums = daily_sums.sort_values("Charged until")
-    daily_sums["Rise"] = daily_sums["Monthly_Payment"].diff().fillna(0)
-    
-    if len(daily_sums) > 1:
-        fig = px.bar(
-            daily_sums,
-            x="Charged until",
-            y="Rise",
-            title="Daily Money Rise (Day-over-Day Changes in Monthly Payments)",
-            labels={"Rise": "Daily Rise (MK)", "Charged until": "Date"}
-        )
-        style_chart(fig, height=400)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Not enough data points for daily rise calculation.")
-else:
-    st.info("Required fields (Charged until, Monthly_Payment) not available.")
-
 # Filtered customer list
 st.markdown("---")
 st.subheader("📋 Filtered Customers")
@@ -929,44 +907,50 @@ st.markdown("---")
 st.subheader("📅 Customers by Due Date")
 
 if "Charged until" in filtered_df.columns:
-    due_group_cols = [filtered_df["Charged until"].dt.date]
-    if "Risk_Category" in filtered_df.columns:
-        due_group_cols.append("Risk_Category")
-
     due_counts = (
-        filtered_df.groupby(due_group_cols)
+        filtered_df.groupby(filtered_df["Charged until"].dt.date)
         .size()
         .reset_index(name="Customer Count")
         .sort_values(by="Charged until")
+        .rename(columns={"Charged until": "Due Date"})
     )
     if len(due_counts) > 0:
-        fig = px.bar(
-            due_counts,
-            x="Charged until",
-            y="Customer Count",
-            color="Risk_Category" if "Risk_Category" in due_counts.columns else None,
-            color_discrete_map=RISK_COLORS,
-            labels={
-                "Charged until": "Due Date",
-                "Customer Count": "Customers",
-                "Risk_Category": "Risk"
-            },
+        due_display = due_counts.copy()
+        due_display["Due Date"] = pd.to_datetime(due_display["Due Date"]).dt.strftime("%d %b %Y")
+        due_selection = st.dataframe(
+            due_display,
+            use_container_width=True,
+            hide_index=True,
+            key="customers_by_due_date_table",
+            on_select="rerun",
+            selection_mode="single-row"
         )
-        fig.update_traces(
-            marker_line_color="#ffffff",
-            marker_line_width=1,
-            opacity=0.92,
-            hovertemplate="<b>%{x}</b><br>%{y:,} customers<extra></extra>"
-        )
-        fig.update_layout(
-            barmode="stack",
-            bargap=0.22,
-            xaxis_title="Due Date",
-            yaxis_title="Customers",
-            xaxis_tickangle=-45,
-        )
-        style_chart(fig, height=390)
-        st.plotly_chart(fig, use_container_width=True)
+        selected_due_rows = due_selection.selection.rows
+        if selected_due_rows:
+            selected_due_date = due_counts.iloc[selected_due_rows[0]]["Due Date"]
+            selected_due_customers = filtered_df[
+                filtered_df["Charged until"].dt.date == selected_due_date
+            ].copy()
+            st.caption(f"Customers due on {pd.to_datetime(selected_due_date).strftime('%d %b %Y')}")
+            due_customer_cols = [
+                "Customer",
+                "Assigned to contractor",
+                "State",
+                "Risk_Category",
+                "Plan_Type",
+                "Monthly_Payment",
+                "Expected_Arrears",
+                "Days system off",
+                "Location"
+            ]
+            due_customer_cols = [col for col in due_customer_cols if col in selected_due_customers.columns]
+            st.dataframe(
+                selected_due_customers[due_customer_cols].sort_values(by="Customer"),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.caption("Select a due-date row to see the customer names for that day.")
     else:
         st.info("No customers available for the selected due date range.")
 else:
