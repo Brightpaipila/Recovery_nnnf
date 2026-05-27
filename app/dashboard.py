@@ -203,27 +203,10 @@ def build_excel_dashboard(
         risk_columns = [col for col in due_export.columns if col != "Due Date"]
         due_export["Total Customers"] = due_export[risk_columns].sum(axis=1)
 
-    plan_export = pd.DataFrame()
-    if {"Charged until", "Plan_Type", "Monthly_Payment"}.issubset(filtered_data.columns):
-        plan_source = filtered_data.dropna(subset=["Charged until"]).copy()
-        plan_source["Due Date"] = plan_source["Charged until"].dt.date
-        plan_export = (
-            plan_source
-            .pivot_table(
-                index="Due Date",
-                columns="Plan_Type",
-                values="Monthly_Payment",
-                aggfunc="sum",
-                fill_value=0
-            )
-            .reset_index()
-        )
-
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         kpi_data.to_excel(writer, sheet_name="KPI Summary", index=False)
         risk_summary.to_excel(writer, sheet_name="Risk Summary", index=False)
         due_export.to_excel(writer, sheet_name="Customers by Due Date", index=False)
-        plan_export.to_excel(writer, sheet_name="Plan Payment Trend", index=False)
         scenario_data.to_excel(writer, sheet_name="Scenario Analysis", index=False)
         make_excel_safe(contractor_data).to_excel(writer, sheet_name="Contractors", index=False)
         make_excel_safe(urgent_data).to_excel(writer, sheet_name="Urgent Followups", index=False)
@@ -243,7 +226,7 @@ def build_excel_dashboard(
         dashboard = workbook.create_sheet("Excel Dashboard", 0)
         dashboard["A1"] = "RECAPO Excel Dashboard"
         dashboard["A1"].font = Font(size=18, bold=True, color="14532D")
-        dashboard["A3"] = "Use the sheets below for KPI summary, risk distribution, due-date load, plan trend, scenarios, contractors, urgent followups, and critical cases."
+        dashboard["A3"] = "Use the sheets below for KPI summary, risk distribution, due-date load, scenarios, contractors, urgent followups, and critical cases."
         dashboard["A3"].alignment = Alignment(wrap_text=True)
         dashboard.column_dimensions["A"].width = 110
 
@@ -277,22 +260,6 @@ def build_excel_dashboard(
             chart.height = 8
             chart.width = 18
             dashboard.add_chart(chart, "J5")
-
-        if len(plan_export) > 0:
-            ws = workbook["Plan Payment Trend"]
-            chart = BarChart()
-            chart.type = "col"
-            chart.style = 10
-            chart.title = "Plan Payment Trend"
-            chart.y_axis.title = "Monthly Payment"
-            chart.x_axis.title = "Due Date"
-            data = Reference(ws, min_col=2, max_col=ws.max_column, min_row=1, max_row=ws.max_row)
-            cats = Reference(ws, min_col=1, min_row=2, max_row=ws.max_row)
-            chart.add_data(data, titles_from_data=True)
-            chart.set_categories(cats)
-            chart.height = 8
-            chart.width = 18
-            dashboard.add_chart(chart, "A22")
 
         if len(scenario_data) > 0:
             ws = workbook["Scenario Analysis"]
@@ -791,6 +758,8 @@ with col3:
 
 # Row 2: Additional visual analysis
 active_insights = filtered_df[filtered_df["State"].isin(["good", "active"])].copy() if "State" in filtered_df.columns else filtered_df.copy()
+top_arrears = pd.DataFrame()
+scatter_df = pd.DataFrame()
 
 insight_col3, insight_col4 = st.columns(2)
 
@@ -870,6 +839,43 @@ with insight_col4:
     else:
         st.info("Days off, arrears, and risk fields are required for this view.")
 
+if len(scatter_df) > 0 and {"Assigned to contractor", "Risk_Category", "Customer", "Expected_Arrears", "Days system off"}.issubset(scatter_df.columns):
+    st.markdown("**Contractor Arrears & Risk Table**")
+    combined_agg = {
+        "Customer": "count",
+        "Expected_Arrears": "sum",
+        "Days system off": "mean",
+    }
+    if "Weekly_Payment" in scatter_df.columns:
+        combined_agg["Weekly_Payment"] = "sum"
+
+    combined_table = (
+        scatter_df
+        .groupby(["Assigned to contractor", "Risk_Category"], as_index=False)
+        .agg(combined_agg)
+        .rename(columns={
+            "Assigned to contractor": "Contractor",
+            "Risk_Category": "Risk",
+            "Customer": "Customers",
+            "Expected_Arrears": "Total Arrears",
+            "Days system off": "Avg Days System Off",
+            "Weekly_Payment": "Weekly Payment"
+        })
+        .sort_values(["Total Arrears", "Customers"], ascending=[False, False])
+    )
+    format_rules = {
+        "Total Arrears": "MK {:,.0f}",
+        "Avg Days System Off": "{:.1f}",
+    }
+    if "Weekly Payment" in combined_table.columns:
+        format_rules["Weekly Payment"] = "MK {:,.0f}"
+
+    st.dataframe(
+        combined_table.style.format(format_rules),
+        use_container_width=True,
+        hide_index=True
+    )
+
 # Filtered customer list
 st.markdown("---")
 st.subheader("📋 Filtered Customers")
@@ -932,6 +938,64 @@ if "Charged until" in filtered_df.columns:
                 filtered_df["Charged until"].dt.date == selected_due_date
             ].copy()
             st.caption(f"Customers due on {pd.to_datetime(selected_due_date).strftime('%d %b %Y')}")
+            graph_col1, graph_col2 = st.columns(2)
+
+            with graph_col1:
+                if "Risk_Category" in selected_due_customers.columns:
+                    selected_risk_counts = (
+                        selected_due_customers["Risk_Category"]
+                        .fillna("Unknown")
+                        .value_counts()
+                        .rename_axis("Risk")
+                        .reset_index(name="Customers")
+                    )
+                    fig = px.bar(
+                        selected_risk_counts,
+                        x="Risk",
+                        y="Customers",
+                        text="Customers",
+                        color="Risk",
+                        color_discrete_map=RISK_COLORS,
+                        labels={"Risk": "Risk", "Customers": "Customers"}
+                    )
+                    fig.update_traces(
+                        marker_line_color="#ffffff",
+                        marker_line_width=1,
+                        texttemplate="%{y:,}",
+                        textposition="outside",
+                        hovertemplate="<b>%{x}</b><br>%{y:,} customers<extra></extra>"
+                    )
+                    fig.update_layout(showlegend=False, bargap=0.28)
+                    style_chart(fig, height=320)
+                    st.plotly_chart(fig, use_container_width=True)
+
+            with graph_col2:
+                if {"Plan_Type", "Monthly_Payment"}.issubset(selected_due_customers.columns):
+                    selected_plan_payments = (
+                        selected_due_customers
+                        .groupby("Plan_Type", as_index=False)
+                        .agg(Monthly_Payment=("Monthly_Payment", "sum"))
+                        .sort_values("Monthly_Payment", ascending=False)
+                    )
+                    fig = px.bar(
+                        selected_plan_payments,
+                        x="Plan_Type",
+                        y="Monthly_Payment",
+                        text="Monthly_Payment",
+                        color_discrete_sequence=[CHART_COLORS["primary"]],
+                        labels={"Plan_Type": "Plan", "Monthly_Payment": "Expected Monthly"}
+                    )
+                    fig.update_traces(
+                        marker_line_color="#ffffff",
+                        marker_line_width=1,
+                        texttemplate="MK %{y:,.0f}",
+                        textposition="outside",
+                        hovertemplate="<b>%{x}</b><br>MK %{y:,.0f}<extra></extra>"
+                    )
+                    fig.update_layout(bargap=0.28)
+                    style_chart(fig, height=320)
+                    st.plotly_chart(fig, use_container_width=True)
+
             due_customer_cols = [
                 "Customer",
                 "Assigned to contractor",
@@ -955,46 +1019,6 @@ if "Charged until" in filtered_df.columns:
         st.info("No customers available for the selected due date range.")
 else:
     st.info("Charged until date is required for due-date grouping.")
-
-# Row 3: Plan Payment Trend
-st.markdown("---")
-st.subheader("📈 Plan Payment Trend")
-if "Charged until" in filtered_df.columns and "Plan_Type" in filtered_df.columns:
-    plan_trend = (
-        filtered_df.groupby([filtered_df["Charged until"].dt.date, "Plan_Type"])
-        .agg({"Monthly_Payment": "sum"})
-        .reset_index()
-        .sort_values(by=["Charged until", "Plan_Type"])
-    )
-    if len(plan_trend) > 0:
-        fig = px.bar(
-            plan_trend,
-            x="Charged until",
-            y="Monthly_Payment",
-            color="Plan_Type",
-            text="Monthly_Payment",
-            color_discrete_sequence=[CHART_COLORS["primary"], CHART_COLORS["secondary"]],
-            labels={
-                "Charged until": "Due Date",
-                "Monthly_Payment": "Monthly Payment",
-                "Plan_Type": "Plan"
-            }
-        )
-        fig.update_traces(
-            marker_line_color="#ffffff",
-            marker_line_width=1,
-            opacity=0.92,
-            texttemplate="MK %{y:,.0f}",
-            textposition="outside",
-            hovertemplate="<b>%{x}</b><br>MK %{y:,.0f}<extra></extra>"
-        )
-        fig.update_layout(barmode="group", bargap=0.22)
-        style_chart(fig, height=390)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No plan payment trend data available for the current selection.")
-else:
-    st.info("Plan payment trend requires Charged until dates and plan type.")
 
 # Row 4: Contractor Performance
 st.markdown("---")
