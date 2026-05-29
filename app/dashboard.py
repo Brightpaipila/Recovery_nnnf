@@ -658,6 +658,61 @@ with col1:
     style_chart(fig, height=520, legend_orientation="v")
     fig.update_layout(margin=dict(l=8, r=8, t=24, b=8))
     st.plotly_chart(fig, use_container_width=True)
+    risk_reference = pd.DataFrame([
+    {
+        "Term": "On Track",
+        "Criteria": "0-29 days system off",
+        "Meaning": "Current or very low risk"
+    },
+    {
+        "Term": "Watchlist",
+        "Criteria": "30-89 days system off",
+        "Meaning": "Early warning, needs monitoring"
+    },
+    {
+        "Term": "Medium Risk",
+        "Criteria": "90-179 days system off",
+        "Meaning": "Requires active follow-up"
+    },
+    {
+        "Term": "High Risk",
+        "Criteria": "180-364 days system off",
+        "Meaning": "Serious concern"
+    },
+    {
+        "Term": "Critical",
+        "Criteria": "365+ days system off",
+        "Meaning": "Likely default, urgent action"
+    },
+    {
+        "Term": "Completed",
+        "Criteria": "State is paid_off",
+        "Meaning": "Loan completed"
+    },
+])
+
+st.markdown("### Risk Category Reference")
+
+st.dataframe(
+    risk_reference,
+    use_container_width=True,
+    hide_index=True,
+    height=320,
+    column_config={
+        "Term": st.column_config.TextColumn(
+            "Term",
+            width="medium"
+        ),
+        "Criteria": st.column_config.TextColumn(
+            "Criteria",
+            width="large"
+        ),
+        "Meaning": st.column_config.TextColumn(
+            "Meaning",
+            width="large"
+        ),
+    }
+)
 
 with col2:
     st.subheader("Collection Trend")
