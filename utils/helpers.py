@@ -250,7 +250,7 @@ def build_duplicate_audit_table(
             name_dups = df[df["_norm_name"].isin(duplicate_name_values)].copy()
             for name_value in duplicate_name_values:
                 rows = name_dups[name_dups["_norm_name"] == name_value]
-                add_duplicate_entries(rows, "Customer Name", rows.iloc[0].get(customer_column, ""))
+                add_duplicate_entries(rows, "Customer", rows.iloc[0].get(customer_column, ""))
 
         unique_names = df["_norm_name"].dropna().unique().tolist()
         similar_pairs = []
@@ -321,8 +321,8 @@ def build_duplicate_phones_table(
                 for _, row in rows.iterrows():
                     duplicate_rows.append(
                         {
-                            "Phone Number": row.get(phone_column, "") if phone_column else "",
-                            "Customer Name": row.get(customer_column, "") if customer_column else "",
+                            "Customer phone numbers": row.get(phone_column, "") if phone_column else "",
+                            "Customer": row.get(customer_column, "") if customer_column else "",
                             "Assigned to contractor": row.get(contractor_column, "") if contractor_column else "",
                             "State": row.get("State", ""),
                             "System": row.get("System", ""),
@@ -349,7 +349,7 @@ def build_duplicate_names_table(
     phone_column: Optional[str] = None,
     contractor_column: Optional[str] = None,
 ) -> pd.DataFrame:
-    """Build a duplicate audit table for duplicate/similar customer names only."""
+    """Build a duplicate audit table for duplicate/similar customer only."""
     if df is None or df.empty:
         return pd.DataFrame()
 
@@ -389,7 +389,7 @@ def build_duplicate_names_table(
                     duplicate_rows.append(
                         {
                             "Duplicate Type": "Exact Match",
-                            "Customer Name": row.get(customer_column, "") if customer_column else "",
+                            "Customer": row.get(customer_column, "") if customer_column else "",
                             "Phone Number": row.get(phone_column, "") if phone_column else "",
                             "Assigned to contractor": row.get(contractor_column, "") if contractor_column else "",
                             "State": row.get("State", ""),
@@ -424,7 +424,7 @@ def build_duplicate_names_table(
                 duplicate_rows.append(
                     {
                         "Duplicate Type": "Similar Name",
-                        "Customer Name": row.get(customer_column, "") if customer_column else "",
+                        "Customer": row.get(customer_column, "") if customer_column else "",
                         "Phone Number": row.get(phone_column, "") if phone_column else "",
                         "Assigned to contractor": row.get(contractor_column, "") if contractor_column else "",
                         "State": row.get("State", ""),
