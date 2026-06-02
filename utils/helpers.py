@@ -199,8 +199,8 @@ def build_duplicate_audit_table(
     display_columns = [
         "Duplicate Field",
         "Duplicate Value",
-        "Customer Name",
-        "Phone Number",
+        "Customer",
+        "Customer phone numbers",
         "Assigned to contractor",
         "State",
         "Balance",
@@ -219,8 +219,8 @@ def build_duplicate_audit_table(
                 {
                     "Duplicate Field": field,
                     "Duplicate Value": value,
-                    "Customer Name": row.get(customer_column, "") if customer_column else "",
-                    "Phone Number": row.get(phone_column, "") if phone_column else "",
+                    "Customer": row.get(customer_column, "") if customer_column else "",
+                    "Customer phone numbers": row.get(phone_column, "") if phone_column else "",
                     "Assigned to contractor": row.get(contractor_column, "") if contractor_column else "",
                     "State": row.get("State", ""),
                     "Balance": row.get("Balance", ""),
@@ -294,7 +294,7 @@ def build_duplicate_phones_table(
 
     display_columns = [
         "Phone Number",
-        "Customer Name",
+        "Customer",
         "Assigned to contractor",
         "State",
         "System",
