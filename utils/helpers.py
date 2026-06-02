@@ -293,7 +293,7 @@ def build_duplicate_phones_table(
     contractor_column = contractor_column or safe_column(df, ["assigned to contractor", "contractor", "agent", "dsa"])
 
     display_columns = [
-        "Phone Number",
+        "Customer phone numbers",
         "Customer",
         "Assigned to contractor",
         "State",
