@@ -1251,10 +1251,23 @@ else:
 st.markdown("---")
 st.subheader("📥 Export Options")
 
-col1, col2, col3 = st.columns(3)
+# Column filter for the filtered data export
+if not filtered_df.empty:
+    all_cols = filtered_df.columns.tolist()
+    preferred_cols = [
+        "Customer", "Customer phone numbers", "Assigned to contractor", 
+        "State", "Risk_Category", "Plan_Type", "Expected_Arrears", 
+        "Days system off", "Charged until", "Left to pay", "Location"
+    ]
+    default_cols = [c for c in preferred_cols if c in all_cols]
+    selected_cols = st.multiselect("Select columns for CSV export", options=all_cols, default=default_cols if default_cols else all_cols)
+else:
+    selected_cols = []
+
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    csv = filtered_df.to_csv(index=False).encode("utf-8")
+    csv = filtered_df[selected_cols].to_csv(index=False).encode("utf-8") if selected_cols else filtered_df.to_csv(index=False).encode("utf-8")
     st.download_button(
         "📊 Download Filtered Data (CSV)",
         csv,
