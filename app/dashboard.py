@@ -282,26 +282,35 @@ def build_excel_dashboard(
     return output.getvalue()
 
 # ================= LOAD DATA =================
-def load_data():
-    """Load latest CSV or Excel export from raw data folder"""
+st.sidebar.header("📁 Data Source")
+uploaded_file = st.sidebar.file_uploader("Upload RECAPO Export", type=["csv", "xlsx"])
+
+def load_data(file_obj):
+    """Load data from uploaded file OR latest CSV/Excel from local folder, returns (df, source_name)"""
+    if file_obj is not None:
+        try:
+            if file_obj.name.lower().endswith(".csv"):
+                return pd.read_csv(file_obj), f"Uploaded: {file_obj.name}"
+            return pd.read_excel(file_obj), f"Uploaded: {file_obj.name}"
+        except Exception as e:
+            st.error(f"Error reading uploaded file: {e}")
+            return pd.DataFrame(), None
     try:
         files = list((root / "data/raw").glob("*.xlsx")) + list((root / "data/raw").glob("*.csv"))
         if not files:
-            raise FileNotFoundError("No CSV or XLSX files found in data/raw")
+            return pd.DataFrame(), None
         latest_file = max(files, key=lambda f: f.stat().st_mtime)
         if latest_file.suffix.lower() == ".csv":
-            df = pd.read_csv(latest_file)
-        else:
-            df = pd.read_excel(latest_file)
-        return df
+            return pd.read_csv(latest_file), f"Local Raw: {latest_file.name}"
+        return pd.read_excel(latest_file), f"Local Raw: {latest_file.name}"
     except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return pd.DataFrame()
+        st.error(f"Error loading local data: {e}")
+        return pd.DataFrame(), None
 
-df = load_data()
+df, data_source = load_data(uploaded_file)
 
-if len(df) == 0:
-    st.error("No data available. Please ensure data/raw/*.xlsx exists.")
+if df.empty:
+    st.info("👋 Welcome! Please upload a RECAPO export file in the sidebar to get started, or ensure a data file exists in data/raw/.")
     st.stop()
 
 # ================= DATA CLEANING & ENRICHMENT =================
@@ -492,6 +501,7 @@ if filter_by_due_date:
 st.sidebar.markdown("---")
 st.sidebar.info(f"""
 **Data Summary**
+- Source: {data_source}
 - Total records: {len(df)}
 - Filtered: {len(filtered_df)}
 - Active customers: {len(df[df['State'].isin(['good', 'active'])])}
