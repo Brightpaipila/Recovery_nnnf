@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+plotly
+openpyxl
+sqlalchemy
+schedule
+requests
+gspread
+google-auth
+Pillow
