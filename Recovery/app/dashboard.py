@@ -55,7 +55,7 @@ def _recovery_kpi_table(summary: dict[str, float | int], df: pd.DataFrame) -> pd
             {"KPI": "Total Contract Value", "Value": _format_mwk(total_due), "Meaning": "Full recoverable portfolio value"},
             {"KPI": "Collected to Date", "Value": _format_mwk(collected_total), "Meaning": "Cumulative cash already recovered"},
             {"KPI": "Outstanding Exposure", "Value": _format_mwk(outstanding), "Meaning": "Cash still pending collection"},
-            {"KPI": "Active Recovery Accounts", "Value": f"{active_customers:,}", "Meaning": "Customers still paying or near completion"},
+            {"KPI": "Active Customers Today", "Value": f"{active_customers:,}", "Meaning": "Customers who paid Today"},
             
         ]
     )
