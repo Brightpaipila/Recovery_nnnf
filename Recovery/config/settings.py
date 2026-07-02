@@ -10,20 +10,24 @@ OUTPUTS_DIR = BASE_DIR / "outputs"
 OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # -------------------------
-# GOOGLE CREDENTIALS (Local + Cloud)
+# GOOGLE CREDENTIALS (Cloud + Local)
 # -------------------------
 DEFAULT_CREDENTIALS_PATH = r"D:\Work\RECAPO\Code Base\Secure\service_account.json"
 
-# For Streamlit Cloud
-if "service_account" in st.secrets:
-    SERVICE_ACCOUNT_INFO = dict(st.secrets["service_account"])
-    SERVICE_ACCOUNT_PATH = None
-else:
-    # Local development fallback
+SERVICE_ACCOUNT_INFO = None
+SERVICE_ACCOUNT_PATH = None
+
+try:
+    # Try Cloud first (st.secrets)
+    if st.secrets and "service_account" in st.secrets:
+        SERVICE_ACCOUNT_INFO = dict(st.secrets["service_account"])
+    else:
+        raise Exception("No secrets")
+except Exception:
+    # Fallback to local JSON file
     SERVICE_ACCOUNT_PATH = Path(
         os.getenv("SERVICE_ACCOUNT_PATH", DEFAULT_CREDENTIALS_PATH)
     )
-    SERVICE_ACCOUNT_INFO = None
 
 # -------------------------
 # GOOGLE SCOPES
