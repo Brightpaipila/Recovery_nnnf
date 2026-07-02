@@ -9,3 +9,7 @@ requests
 gspread
 google-auth
 Pillow
+gspread
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
