@@ -6,9 +6,8 @@ openpyxl
 sqlalchemy
 schedule
 requests
-gspread
-google-auth
 Pillow
+
 gspread
 google-auth
 google-auth-oauthlib
