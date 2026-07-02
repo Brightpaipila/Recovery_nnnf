@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+plotly
+openpyxl
+sqlalchemy
+schedule
+requests
+Pillow
+gspread
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
