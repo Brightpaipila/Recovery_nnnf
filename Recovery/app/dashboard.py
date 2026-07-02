@@ -48,7 +48,7 @@ def _recovery_kpi_table(summary: dict[str, float | int], df: pd.DataFrame) -> pd
     collected_total = float(df["Balance"].sum()) if "Balance" in df.columns else 0.0
     outstanding = float(summary["outstanding"])
     active_customers = int((df["recovery_segment"].isin(["Active Payer", "Near Completion"])).sum())
-    high_risk_customers = int((df["risk_level"] == "High Risk").sum())
+    
 
     return pd.DataFrame(
         [
@@ -56,13 +56,13 @@ def _recovery_kpi_table(summary: dict[str, float | int], df: pd.DataFrame) -> pd
             {"KPI": "Collected to Date", "Value": _format_mwk(collected_total), "Meaning": "Cumulative cash already recovered"},
             {"KPI": "Outstanding Exposure", "Value": _format_mwk(outstanding), "Meaning": "Cash still pending collection"},
             {"KPI": "Active Recovery Accounts", "Value": f"{active_customers:,}", "Meaning": "Customers still paying or near completion"},
-            {"KPI": "High-Risk Accounts", "Value": f"{high_risk_customers:,}", "Meaning": "Defaulters and problem cases needing attention"},
+            
         ]
     )
 
 
 def render_page() -> None:
-    st.title("NNNF Recovery Intelligence")
+    st.title("NNNF Recovery Dashboard")
     st.caption("International-standard portfolio view for collections, outstanding exposure, and contractor performance")
 
     if "df" not in st.session_state:

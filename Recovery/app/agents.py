@@ -30,7 +30,7 @@ def _build_agent_insights(df: pd.DataFrame, agent_summary: pd.DataFrame) -> pd.D
         df.groupby("Assigned to contractor")
         .agg(
             Outstanding_Exposure=("Left to pay", "sum"),
-            High_Risk_Accounts=("risk_level", lambda s: int((s == "High Risk").sum())),
+            
             Problem_Cases=("problem_case", "sum"),
             Active_Accounts=("recovery_segment", lambda s: int(s.isin(["Active Payer", "Near Completion"]).sum())),
         )
@@ -39,12 +39,12 @@ def _build_agent_insights(df: pd.DataFrame, agent_summary: pd.DataFrame) -> pd.D
 
     insights = agent_summary.merge(risk, on="Assigned to contractor", how="left")
     insights["Outstanding_Exposure"] = insights["Outstanding_Exposure"].fillna(0)
-    insights["High_Risk_Accounts"] = insights["High_Risk_Accounts"].fillna(0).astype(int)
+    
     insights["Problem_Cases"] = insights["Problem_Cases"].fillna(0).astype(int)
     insights["Active_Accounts"] = insights["Active_Accounts"].fillna(0).astype(int)
     insights["Collection_per_Account"] = insights["Todays_Collections"] / insights["Customers"].replace(0, pd.NA)
     insights["Collection_per_Account"] = insights["Collection_per_Account"].fillna(0)
-    insights["Risk_Load"] = insights["High_Risk_Accounts"] / insights["Customers"].replace(0, pd.NA)
+    
     insights["Risk_Load"] = insights["Risk_Load"].fillna(0)
     insights["Exposure_per_Account"] = insights["Outstanding_Exposure"] / insights["Customers"].replace(0, pd.NA)
     insights["Exposure_per_Account"] = insights["Exposure_per_Account"].fillna(0)
@@ -52,7 +52,7 @@ def _build_agent_insights(df: pd.DataFrame, agent_summary: pd.DataFrame) -> pd.D
 
 
 def render_page() -> None:
-    st.title("Agent Performance Intelligence")
+    st.title("Agent Performance")
     st.caption("Contractor collection performance, outstanding exposure, and operational risk")
 
     if "df" not in st.session_state:
@@ -111,7 +111,7 @@ def render_page() -> None:
             hover_name="Assigned to contractor",
             hover_data={
                 "Customers": ":,",
-                "High_Risk_Accounts": ":,",
+                
                 "Active_Accounts": ":,",
                 "Outstanding_Exposure": ":,.0f",
                 "Todays_Collections": ":,.0f",
@@ -134,7 +134,7 @@ def render_page() -> None:
             "Assigned to contractor",
             "Customers",
             "Active_Accounts",
-            "High_Risk_Accounts",
+            
             "Todays_Collections",
             "Outstanding_Exposure",
             "Exposure_per_Account",
