@@ -7,7 +7,7 @@ except ImportError:  # pragma: no cover - handled gracefully at runtime
     gspread = None
     Credentials = None
 
-from config.settings import GOOGLE_SCOPES, SERVICE_ACCOUNT_PATH
+from config.settings import GOOGLE_SCOPES, SERVICE_ACCOUNT_PATH, SERVICE_ACCOUNT_INFO
 
 
 def _normalize_headers(headers):
@@ -68,8 +68,20 @@ def get_client():
             "Install them with 'pip install gspread google-auth'."
         )
 
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_PATH, scopes=GOOGLE_SCOPES)
-    return gspread.authorize(creds)
+    try:
+        if SERVICE_ACCOUNT_INFO is not None:
+            # Streamlit Cloud - using st.secrets
+            creds = Credentials.from_service_account_info(
+                SERVICE_ACCOUNT_INFO, scopes=GOOGLE_SCOPES
+            )
+        else:
+            # Local development - using JSON file
+            creds = Credentials.from_service_account_file(
+                SERVICE_ACCOUNT_PATH, scopes=GOOGLE_SCOPES
+            )
+        return gspread.authorize(creds)
+    except Exception as e:
+        raise Exception(f"Failed to authenticate with Google Sheets: {str(e)}")
 
 
 def list_worksheets(sheet_url: str):
