@@ -49,18 +49,12 @@ def _recovery_kpi_table(summary: dict[str, float | int], df: pd.DataFrame) -> pd
     outstanding = float(summary["outstanding"])
     active_customers = int((df["recovery_segment"].isin(["Active Payer", "Near Completion"])).sum())
     high_risk_customers = int((df["risk_level"] == "High Risk").sum())
-    collection_rate = (collected_total / total_due) if total_due else 0.0
-    exposure_rate = (outstanding / total_due) if total_due else 0.0
-    avg_outstanding = (outstanding / len(df)) if len(df) else 0.0
 
     return pd.DataFrame(
         [
             {"KPI": "Total Contract Value", "Value": _format_mwk(total_due), "Meaning": "Full recoverable portfolio value"},
             {"KPI": "Collected to Date", "Value": _format_mwk(collected_total), "Meaning": "Cumulative cash already recovered"},
             {"KPI": "Outstanding Exposure", "Value": _format_mwk(outstanding), "Meaning": "Cash still pending collection"},
-            {"KPI": "Portfolio Collection Rate", "Value": f"{collection_rate:.1%}", "Meaning": "Collected share of total contract value"},
-            {"KPI": "Outstanding Exposure Rate", "Value": f"{exposure_rate:.1%}", "Meaning": "Remaining unpaid share of total contract value"},
-            {"KPI": "Average Outstanding per Customer", "Value": _format_mwk(avg_outstanding), "Meaning": "Average amount still owed per account"},
             {"KPI": "Active Recovery Accounts", "Value": f"{active_customers:,}", "Meaning": "Customers still paying or near completion"},
             {"KPI": "High-Risk Accounts", "Value": f"{high_risk_customers:,}", "Meaning": "Defaulters and problem cases needing attention"},
         ]

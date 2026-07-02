@@ -72,8 +72,9 @@ def render_page() -> None:
             "Todays_Collections": st.column_config.NumberColumn("Today's Collections", format="MWK %.0f"),
             "Cumulative_Paid": st.column_config.NumberColumn("Cumulative Paid", format="MWK %.0f"),
             "Outstanding_Exposure": st.column_config.NumberColumn("Outstanding Exposure", format="MWK %.0f"),
-            "Collection_per_Account": st.column_config.NumberColumn("Collection per Account", format="MWK %.0f"),
-            "Exposure_per_Account": st.column_config.NumberColumn("Exposure per Account", format="MWK %.0f"),
+            "Collection_per_Account": None,
+            "Problem_Cases": None,
+            "Exposure_per_Account": st.column_config.NumberColumn("Average Amount Still Owed", format="MWK %.0f"),
             "Risk_Load": st.column_config.ProgressColumn("Risk Load", format="%.1f", min_value=0, max_value=1),
         },
     )
@@ -85,14 +86,14 @@ def render_page() -> None:
             agent_insights.head(12),
             x="Assigned to contractor",
             y="Todays_Collections",
-            color="Collection_per_Account",
+            color="Active_Accounts",
             color_continuous_scale=["#DBEAFE", "#2563EB"],
             text="Todays_Collections",
             title="Collections by Contractor",
             labels={
                 "Assigned to contractor": "Contractor",
                 "Todays_Collections": "Collected Today",
-                "Collection_per_Account": "MWK / Account",
+                "Active_Accounts": "Active Accounts",
             },
         )
         collection_fig.update_traces(texttemplate="MWK %{text:,.0f}", textposition="outside")
@@ -134,10 +135,8 @@ def render_page() -> None:
             "Customers",
             "Active_Accounts",
             "High_Risk_Accounts",
-            "Problem_Cases",
             "Todays_Collections",
             "Outstanding_Exposure",
-            "Collection_per_Account",
             "Exposure_per_Account",
             "Risk_Load",
         ]
@@ -157,8 +156,7 @@ def render_page() -> None:
         column_config={
             "Todays_Collections": st.column_config.NumberColumn("Today's Collections", format="MWK %.0f"),
             "Outstanding_Exposure": st.column_config.NumberColumn("Outstanding Exposure", format="MWK %.0f"),
-            "Collection_per_Account": st.column_config.NumberColumn("Collection per Account", format="MWK %.0f"),
-            "Exposure_per_Account": st.column_config.NumberColumn("Exposure per Account", format="MWK %.0f"),
+            "Exposure_per_Account": st.column_config.NumberColumn("Average Amount Still Owed", format="MWK %.0f"),
             "Risk_Load": st.column_config.ProgressColumn("Risk Load", format="%.1f", min_value=0, max_value=1),
         },
     )
