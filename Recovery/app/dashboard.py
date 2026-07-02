@@ -1,16 +1,75 @@
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from services.analytics import build_agent_summary, build_kpi_summary, prepare_recovery_data
+
+
+CHART_TEMPLATE = "plotly_white"
+SEGMENT_COLORS = {
+    "Paid / Completed": "#0F766E",
+    "Near Completion": "#22C55E",
+    "Active Payer": "#2563EB",
+    "Needs Follow-up": "#F59E0B",
+    "Defaulter": "#DC2626",
+    "Problem Case": "#7F1D1D",
+}
 
 
 def _format_mwk(value: float) -> str:
     return f"MWK {value:,.0f}"
 
 
+def _style_chart(fig: go.Figure, yaxis_title: str | None = None) -> go.Figure:
+    fig.update_layout(
+        template=CHART_TEMPLATE,
+        margin=dict(l=12, r=12, t=48, b=12),
+        height=380,
+        font=dict(family="Arial, sans-serif", size=13, color="#334155"),
+        title_font=dict(size=18, color="#0F172A"),
+        legend_title_text="",
+        hoverlabel=dict(bgcolor="white", font_size=12),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+    )
+    fig.update_xaxes(showgrid=False, title_text="")
+    fig.update_yaxes(showgrid=True, gridcolor="#E2E8F0", title_text=yaxis_title)
+    return fig
+
+
+def _currency_axis(fig: go.Figure) -> go.Figure:
+    fig.update_yaxes(tickprefix="MWK ", separatethousands=True)
+    return fig
+
+
+def _recovery_kpi_table(summary: dict[str, float | int], df: pd.DataFrame) -> pd.DataFrame:
+    total_due = float(df["Pay off amount"].sum()) if "Pay off amount" in df.columns else 0.0
+    collected_total = float(df["Balance"].sum()) if "Balance" in df.columns else 0.0
+    outstanding = float(summary["outstanding"])
+    active_customers = int((df["recovery_segment"].isin(["Active Payer", "Near Completion"])).sum())
+    high_risk_customers = int((df["risk_level"] == "High Risk").sum())
+    collection_rate = (collected_total / total_due) if total_due else 0.0
+    exposure_rate = (outstanding / total_due) if total_due else 0.0
+    avg_outstanding = (outstanding / len(df)) if len(df) else 0.0
+
+    return pd.DataFrame(
+        [
+            {"KPI": "Total Contract Value", "Value": _format_mwk(total_due), "Meaning": "Full recoverable portfolio value"},
+            {"KPI": "Collected to Date", "Value": _format_mwk(collected_total), "Meaning": "Cumulative cash already recovered"},
+            {"KPI": "Outstanding Exposure", "Value": _format_mwk(outstanding), "Meaning": "Cash still pending collection"},
+            {"KPI": "Portfolio Collection Rate", "Value": f"{collection_rate:.1%}", "Meaning": "Collected share of total contract value"},
+            {"KPI": "Outstanding Exposure Rate", "Value": f"{exposure_rate:.1%}", "Meaning": "Remaining unpaid share of total contract value"},
+            {"KPI": "Average Outstanding per Customer", "Value": _format_mwk(avg_outstanding), "Meaning": "Average amount still owed per account"},
+            {"KPI": "Active Recovery Accounts", "Value": f"{active_customers:,}", "Meaning": "Customers still paying or near completion"},
+            {"KPI": "High-Risk Accounts", "Value": f"{high_risk_customers:,}", "Meaning": "Defaulters and problem cases needing attention"},
+        ]
+    )
+
+
 def render_page() -> None:
-    st.title("RECOVERIES NNNF")
-    st.caption("Recovery dashboard for customer payment tracking and contractor performance")
+    st.title("NNNF Recovery Intelligence")
+    st.caption("International-standard portfolio view for collections, outstanding exposure, and contractor performance")
 
     if "df" not in st.session_state:
         st.warning("No data loaded.")
@@ -34,6 +93,8 @@ def render_page() -> None:
     metrics[2].metric("Balance Paid So Far", _format_mwk(summary['balance_paid']))
     metrics[3].metric("Left to Pay", _format_mwk(summary['outstanding']))
 
+    st.dataframe(_recovery_kpi_table(summary, df), use_container_width=True, hide_index=True)
+
     st.divider()
 
     status_summary = (
@@ -46,38 +107,107 @@ def render_page() -> None:
         .reset_index()
         .sort_values(["Customers", "Amount_Paid"], ascending=False)
     )
+    status_summary["Collection_Rate"] = status_summary["Amount_Paid"] / (
+        status_summary["Amount_Paid"] + status_summary["Left_To_Pay"]
+    ).replace(0, pd.NA)
+    status_summary["Collection_Rate"] = status_summary["Collection_Rate"].fillna(0)
+
+    segment_summary = (
+        df.groupby("recovery_segment")
+        .agg(
+            Customers=("Customer", "count"),
+            Amount_Paid=("Amount paid", "sum"),
+            Left_To_Pay=("Left to pay", "sum"),
+        )
+        .reset_index()
+        .sort_values("Customers", ascending=False)
+    )
 
     st.subheader("Status KPI Summary")
-    st.dataframe(status_summary, use_container_width=True)
+    st.dataframe(
+        status_summary,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Amount_Paid": st.column_config.NumberColumn("Amount Paid", format="MWK %.0f"),
+            "Left_To_Pay": st.column_config.NumberColumn("Left to Pay", format="MWK %.0f"),
+            "Collection_Rate": st.column_config.ProgressColumn("Collection Rate", format="%.1f", min_value=0, max_value=1),
+        },
+    )
 
     st.divider()
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("STATUS DISTRIBUTION")
-        st.bar_chart(status_summary.set_index("Status")["Customers"])
+        fig = px.bar(
+            segment_summary,
+            x="recovery_segment",
+            y="Customers",
+            color="recovery_segment",
+            color_discrete_map=SEGMENT_COLORS,
+            text="Customers",
+            title="Recovery Portfolio Segmentation",
+            labels={"recovery_segment": "Segment", "Customers": "Customers"},
+        )
+        fig.update_traces(textposition="outside", hovertemplate="<b>%{x}</b><br>Customers: %{y:,}<extra></extra>")
+        st.plotly_chart(_style_chart(fig, "Customers"), use_container_width=True)
 
     with col2:
-        st.subheader("AGENT PERFORMANCE")
         agent_summary = build_agent_summary(df)
         if not agent_summary.empty:
-            st.bar_chart(agent_summary.set_index("Assigned to contractor")["Todays_Collections"])
+            agent_fig = px.bar(
+                agent_summary.head(10),
+                x="Assigned to contractor",
+                y="Todays_Collections",
+                color="Customers",
+                color_continuous_scale=["#DBEAFE", "#2563EB"],
+                text="Todays_Collections",
+                title="Top Contractor Collections",
+                labels={"Assigned to contractor": "Contractor", "Todays_Collections": "Collected Today", "Customers": "Accounts"},
+            )
+            agent_fig.update_traces(texttemplate="MWK %{text:,.0f}", textposition="outside")
+            agent_fig.update_layout(coloraxis_colorbar_title="Accounts")
+            st.plotly_chart(_currency_axis(_style_chart(agent_fig, "Collected Today")), use_container_width=True)
         else:
             st.info("No agent data available")
 
     st.divider()
 
-    st.subheader("DAILY COLLECTION TREND")
     if "Date" in df.columns:
         trend = (
             df.groupby("Date")
-            .agg(Today_Paid=("Amount paid", "sum"))
+            .agg(Today_Paid=("Amount paid", "sum"), Customers=("Customer", "count"))
             .reset_index()
         )
-        st.line_chart(trend.set_index("Date"))
+        trend_fig = px.line(
+            trend,
+            x="Date",
+            y="Today_Paid",
+            markers=True,
+            title="Daily Collections Trend",
+            labels={"Today_Paid": "Collected", "Date": "Date"},
+            hover_data={"Customers": ":,"},
+        )
+        trend_fig.update_traces(line=dict(color="#0F766E", width=3), hovertemplate="<b>%{x}</b><br>Collected: MWK %{y:,.0f}<extra></extra>")
+        st.plotly_chart(_currency_axis(_style_chart(trend_fig, "Collected")), use_container_width=True)
     else:
         st.info("No date column available for trend chart")
+
+    exposure_fig = px.treemap(
+        segment_summary,
+        path=["recovery_segment"],
+        values="Left_To_Pay",
+        color="Amount_Paid",
+        color_continuous_scale=["#FEE2E2", "#F59E0B", "#0F766E"],
+        title="Outstanding Exposure by Recovery Segment",
+        labels={"Left_To_Pay": "Outstanding", "Amount_Paid": "Collected"},
+    )
+    exposure_fig.update_traces(
+        texttemplate="<b>%{label}</b><br>MWK %{value:,.0f}",
+        hovertemplate="<b>%{label}</b><br>Outstanding: MWK %{value:,.0f}<extra></extra>",
+    )
+    st.plotly_chart(_style_chart(exposure_fig), use_container_width=True)
 
     st.divider()
     st.subheader("Latest Customer Recovery Records")
