@@ -13,7 +13,6 @@ SEGMENT_COLORS = {
     "Near Completion": "#22C55E",
     "Active Payer": "#2563EB",
     "Needs Follow-up": "#F59E0B",
-    "Problem Case": "#7F1D1D",
 }
 
 
@@ -116,6 +115,9 @@ def render_page() -> None:
         .reset_index()
         .sort_values("Customers", ascending=False)
     )
+    segment_summary = segment_summary[
+        ~segment_summary["recovery_segment"].isin(["Defaulter", "Problem Case"])
+    ]
 
     st.subheader("Status KPI Summary")
     st.dataframe(
@@ -194,7 +196,7 @@ def render_page() -> None:
         values="Left_To_Pay",
         color="Amount_Paid",
         color_continuous_scale=["#FEE2E2", "#F59E0B", "#0F766E"],
-        title="Outstanding Exposure by Recovery Segment",
+        title="Recovery Segment",
         labels={"Left_To_Pay": "Outstanding", "Amount_Paid": "Collected"},
     )
     exposure_fig.update_traces(
@@ -204,7 +206,7 @@ def render_page() -> None:
     st.plotly_chart(_style_chart(exposure_fig), use_container_width=True)
 
     st.divider()
-    st.subheader("Latest Customer Recovery Records")
+    st.subheader("Customer Recovery Records")
     display_columns = [
         col for col in ["Customer", "Status", "Balance", "Pay off amount", "Left to pay", "Amount paid", "Assigned to contractor", "Date"]
         if col in df.columns
