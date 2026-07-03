@@ -159,7 +159,7 @@ def render_page() -> None:
                 color="Customers",
                 color_continuous_scale=["#DBEAFE", "#2563EB"],
                 text="Todays_Collections",
-                title="Top Contractor Collections",
+                title="Contractor Collections",
                 labels={"Assigned to contractor": "Contractor", "Todays_Collections": "Collected Today", "Customers": "Accounts"},
             )
             agent_fig.update_traces(texttemplate="MWK %{text:,.0f}", textposition="outside")
