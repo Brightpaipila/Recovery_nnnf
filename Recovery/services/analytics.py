@@ -95,16 +95,20 @@ def prepare_recovery_data(df: pd.DataFrame) -> pd.DataFrame:
     left_to_pay = cleaned["Left to pay"]
     amount_paid = cleaned["Amount paid"]
 
+    paid_status = cleaned["Status"].str.strip().str.lower() == "paid"
+
+    completed = left_to_pay <= 0
+
     cleaned["recovery_segment"] = "Needs Follow-up"
-    cleaned.loc[(cleaned["Status"] == "Paid") | (left_to_pay <= 0), "recovery_segment"] = "Paid / Completed"
     cleaned.loc[(amount_paid > 0) & (left_to_pay > 0) & (left_to_pay <= (pay_off * 0.2)), "recovery_segment"] = "Near Completion"
     cleaned.loc[(amount_paid > 0) & (left_to_pay > 0) & (left_to_pay > (pay_off * 0.2)), "recovery_segment"] = "Active Payer"
     cleaned.loc[(cleaned["problem_case"]) & (amount_paid == 0), "recovery_segment"] = "Problem Case"
-    cleaned.loc[(amount_paid == 0) & (~cleaned["problem_case"]), "recovery_segment"] = "Defaulter"
+    cleaned.loc[paid_status & (~completed), "recovery_segment"] = "Paid"
+    cleaned.loc[completed, "recovery_segment"] = "Completed"
 
     cleaned["risk_level"] = "Medium Risk"
-    cleaned.loc[(cleaned["recovery_segment"] == "Paid / Completed"), "risk_level"] = "Low Risk"
-    cleaned.loc[(cleaned["recovery_segment"].isin(["Defaulter", "Problem Case"])), "risk_level"] = "High Risk"
+    cleaned.loc[(cleaned["recovery_segment"].isin(["Paid", "Completed"])), "risk_level"] = "Low Risk"
+    cleaned.loc[(cleaned["recovery_segment"] == "Problem Case"), "risk_level"] = "High Risk"
     cleaned.loc[(cleaned["recovery_segment"] == "Near Completion"), "risk_level"] = "Low Risk"
 
     return cleaned

@@ -8,11 +8,11 @@ from services.analytics import build_agent_summary, build_kpi_summary, prepare_r
 
 CHART_TEMPLATE = "plotly_white"
 SEGMENT_COLORS = {
-    "Paid / Completed": "#0F766E",
+    "Paid": "#0F766E",
+    "Completed": "#14B8A6",
     "Near Completion": "#22C55E",
     "Active Payer": "#2563EB",
     "Needs Follow-up": "#F59E0B",
-    "Defaulter": "#DC2626",
     "Problem Case": "#7F1D1D",
 }
 
@@ -209,7 +209,16 @@ def render_page() -> None:
         col for col in ["Customer", "Status", "Balance", "Pay off amount", "Left to pay", "Amount paid", "Assigned to contractor", "Date"]
         if col in df.columns
     ]
-    st.dataframe(df[display_columns], use_container_width=True)
+    st.dataframe(
+        df[display_columns],
+        use_container_width=True,
+        column_config={
+            "Balance": st.column_config.NumberColumn("Balance", format="MWK %.0f"),
+            "Pay off amount": st.column_config.NumberColumn("Pay off amount", format="MWK %.0f"),
+            "Left to pay": st.column_config.NumberColumn("Left to pay", format="MWK %.0f"),
+            "Amount paid": st.column_config.NumberColumn("Amount paid", format="MWK %.0f"),
+        },
+    )
 
 
 if __name__ == "__main__":
