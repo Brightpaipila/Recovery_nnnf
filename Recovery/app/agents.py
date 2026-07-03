@@ -29,7 +29,7 @@ def _build_agent_insights(df: pd.DataFrame, agent_summary: pd.DataFrame) -> pd.D
     risk = (
         df.groupby("Assigned to contractor")
         .agg(
-            Outstanding_Exposure=("Left to pay", "sum"),
+            Outstanding=("Left to pay", "sum"),
             High_Risk_Accounts=("risk_level", lambda s: int((s == "High Risk").sum())),
             Active_Accounts=("recovery_segment", lambda s: int(s.isin(["Active Payer", "Near Completion"]).sum())),
         )
@@ -37,19 +37,19 @@ def _build_agent_insights(df: pd.DataFrame, agent_summary: pd.DataFrame) -> pd.D
     )
 
     insights = agent_summary.merge(risk, on="Assigned to contractor", how="left")
-    insights["Outstanding_Exposure"] = insights["Outstanding_Exposure"].fillna(0)
+    insights["Outstanding"] = insights["Outstandin"].fillna(0)
     insights["High_Risk_Accounts"] = insights["High_Risk_Accounts"].fillna(0).astype(int)
     insights["Active_Accounts"] = insights["Active_Accounts"].fillna(0).astype(int)
     insights["Risk_Load"] = insights["High_Risk_Accounts"] / insights["Customers"].replace(0, pd.NA)
     insights["Risk_Load"] = insights["Risk_Load"].fillna(0)
-    insights["Exposure_per_Account"] = insights["Outstanding_Exposure"] / insights["Customers"].replace(0, pd.NA)
+    insights["Exposure_per_Account"] = insights["Outstanding"] / insights["Customers"].replace(0, pd.NA)
     insights["Exposure_per_Account"] = insights["Exposure_per_Account"].fillna(0)
     return insights.sort_values(["Todays_Collections", "Active_Accounts"], ascending=False)
 
 
 def render_page() -> None:
     st.title("Agent Performance")
-    st.caption("Contractor collection performance, outstanding exposure, and operational risk")
+    st.caption("Contractor collection performance, outstanding , and operational risk")
 
     if "df" not in st.session_state:
         st.warning("No data loaded.")
@@ -67,7 +67,7 @@ def render_page() -> None:
         column_config={
             "Todays_Collections": st.column_config.NumberColumn("Today's Collections", format="MWK %.0f"),
             "Cumulative_Paid": st.column_config.NumberColumn("Cumulative Paid", format="MWK %.0f"),
-            "Outstanding_Exposure": st.column_config.NumberColumn("Outstanding Exposure", format="MWK %.0f"),
+            "Outstanding": st.column_config.NumberColumn("Outstanding Exposure", format="MWK %.0f"),
             "High_Risk_Accounts": None,
             "Exposure_per_Account": st.column_config.NumberColumn("Average Amount Still Owed", format="MWK %.0f"),
             "Risk_Load": st.column_config.ProgressColumn("Risk Load", format="%.1f", min_value=0, max_value=1),
@@ -98,7 +98,7 @@ def render_page() -> None:
     with col2:
         exposure_fig = px.scatter(
             agent_insights,
-            x="Outstanding_Exposure",
+            x="Outstanding",
             y="Todays_Collections",
             size="Customers",
             color="Risk_Load",
@@ -108,13 +108,13 @@ def render_page() -> None:
                 "Customers": ":,",
                 "Active_Accounts": ":,",
                 "High_Risk_Accounts": ":,",
-                "Outstanding_Exposure": ":,.0f",
+                "Outstanding": ":,.0f",
                 "Todays_Collections": ":,.0f",
                 "Risk_Load": ":.1%",
             },
-            title="Contractor Exposure vs Collections",
+            title="Contractor vs Collections",
             labels={
-                "Outstanding_Exposure": "Outstanding Exposure",
+                "Outstanding": "Outstanding",
                 "Todays_Collections": "Collected Today",
                 "Risk_Load": "Risk Load",
             },
@@ -130,7 +130,7 @@ def render_page() -> None:
             "Customers",
             "Active_Accounts",
             "Todays_Collections",
-            "Outstanding_Exposure",
+            "Outstanding",
             "Exposure_per_Account",
             "Risk_Load",
         ]
@@ -149,7 +149,7 @@ def render_page() -> None:
         hide_index=True,
         column_config={
             "Todays_Collections": st.column_config.NumberColumn("Today's Collections", format="MWK %.0f"),
-            "Outstanding_Exposure": st.column_config.NumberColumn("Outstanding Exposure", format="MWK %.0f"),
+            "Outstanding": st.column_config.NumberColumn("Outstanding Exposure", format="MWK %.0f"),
             "Exposure_per_Account": st.column_config.NumberColumn("Average Amount Still Owed", format="MWK %.0f"),
             "Risk_Load": st.column_config.ProgressColumn("Risk Load", format="%.1f", min_value=0, max_value=1),
         },
